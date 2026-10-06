@@ -7,10 +7,12 @@ python -m pip install -e ".[evaluation,test]"
 python start.py
 ```
 
-On the first run, the program captures chessboard views for lens calibration,
-an empty field image, the car's appearance and front, and four measured floor
-reference points. Measure the printed chessboard square size before running.
-It saves that setup and starts tracking.
+Before the first run, create `chessboard.png` with
+`python tools/generate_chessboard.py` and display it on a flat phone, tablet, or
+second monitor without stretching the squares. The program captures views of
+that screen for lens calibration, then an empty field image, the car's
+appearance and front, and four measured floor reference points. No printing or
+screen-square measurement is needed. It saves the setup and starts tracking.
 
 Later, the same command starts tracking immediately:
 

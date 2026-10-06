@@ -13,7 +13,10 @@ def main() -> None:
     parser.add_argument("images", nargs="+", help="image paths or one quoted glob")
     parser.add_argument("--columns", type=int, default=9, help="inner chessboard corners across")
     parser.add_argument("--rows", type=int, default=6, help="inner chessboard corners down")
-    parser.add_argument("--square-mm", type=float, default=25.0)
+    parser.add_argument(
+        "--square-size", "--square-mm", dest="square_size", type=float,
+        default=1.0, help="one square in arbitrary units (default: 1)",
+    )
     parser.add_argument("--output", default="calibration/camera.yaml")
     args = parser.parse_args()
 
@@ -30,7 +33,9 @@ def main() -> None:
     pattern_size = (args.columns, args.rows)
     object_template = np.zeros((args.rows * args.columns, 3), dtype=np.float32)
     object_template[:, :2] = np.mgrid[0:args.columns, 0:args.rows].T.reshape(-1, 2)
-    object_template *= args.square_mm
+    if args.square_size <= 0:
+        parser.error("--square-size must be positive")
+    object_template *= args.square_size
 
     object_points: list[np.ndarray] = []
     image_points: list[np.ndarray] = []

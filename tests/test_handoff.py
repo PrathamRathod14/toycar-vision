@@ -20,7 +20,7 @@ def test_setup_requires_a_measured_dimension(monkeypatch):
     assert start._positive_number("Measured size") == 20.0
 
 
-def test_printable_chessboard_has_requested_inner_corners(tmp_path, monkeypatch):
+def test_generated_chessboard_has_requested_inner_corners(tmp_path, monkeypatch):
     output = tmp_path / "board.png"
     monkeypatch.setattr(sys, "argv", ["generate_chessboard.py", "--output", str(output)])
     generate_chessboard()
@@ -115,7 +115,7 @@ def test_first_run_guides_camera_background_car_and_field(tmp_path, monkeypatch)
     monkeypatch.setattr(start, "_run_tool", lambda args: tool_calls.append(args))
     monkeypatch.setattr(start, "run", lambda config, **kwargs: None)
     monkeypatch.setattr(sys, "argv", ["start.py", "--config", str(config),
-                                     "--square-mm", "20", "--headless"])
+                                     "--headless"])
     start.main()
     assert [call[0] for call in tool_calls] == [
         "tools/capture_chessboard.py", "tools/calibrate_camera.py",
@@ -125,6 +125,7 @@ def test_first_run_guides_camera_background_car_and_field(tmp_path, monkeypatch)
     assert "--background-file" not in tool_calls[2]
     assert "--background-file" in tool_calls[3]
     assert "--world-points-mm" in tool_calls[-1]
+    assert tool_calls[1][tool_calls[1].index("--square-size") + 1] == "1.0"
     for call in (tool_calls[0], tool_calls[2], tool_calls[3], tool_calls[4]):
         assert "--fps" in call and "--exposure" in call
 

@@ -53,10 +53,12 @@ adding an empty-field reference; that new mode still needs physical testing.
 2. Copy `config.color.example.yaml` to a team-specific YAML file. Set the actual
    camera index or stream URL, car name/ID, output host, and UDP port. Keep the
    field size as a measured value; 2500 × 1500 mm is only an approximate brief.
-3. Capture at least eight chessboard views at the **tracking resolution** and
-   measure the board's real square size. The first-run wizard performs this
-   calibration when `camera.calibration_file` is configured. Use the same
-   correction during field calibration and runtime.
+3. Display the generated chessboard on a flat phone, tablet, or second screen
+   without stretching its squares. Capture at least eight views at the
+   **tracking resolution** while the camera remains fixed and the screen moves.
+   Physical square size is not needed for lens intrinsics; the wizard uses an
+   arbitrary square unit. Use the same correction during field calibration
+   and runtime.
 4. Run `python start.py --config team.yaml --source 1 --host CONTROLLER_IP`.
    The wizard captures an empty field, teaches the actual car appearance and
    front, and asks for four floor points. Set `field.reference_points_mm` for

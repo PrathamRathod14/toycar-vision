@@ -1,4 +1,4 @@
-"""Generate a chessboard image for printing and measuring."""
+"""Generate a chessboard image for display on a flat screen or printing."""
 
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ def main() -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
     if not cv2.imwrite(str(output), image):
         raise SystemExit(f"Could not write {output}")
-    print(f"Saved {output}. Print flat and measure one actual square in millimetres.")
+    print(f"Saved {output}. Display it on a flat screen without stretching the squares.")
 
 
 if __name__ == "__main__":

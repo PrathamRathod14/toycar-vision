@@ -59,7 +59,11 @@ def main() -> None:
     parser.add_argument("--chessboard-columns", type=int, default=9, help="inner corners across")
     parser.add_argument("--chessboard-rows", type=int, default=6, help="inner corners down")
     parser.add_argument("--calibration-views", type=int, default=12)
-    parser.add_argument("--square-mm", type=float, help="measured chessboard square size")
+    parser.add_argument(
+        "--square-size", "--square-mm", dest="square_size", type=float,
+        default=1.0,
+        help="chessboard square size in arbitrary units (default: 1; millimetres are optional)",
+    )
     args = parser.parse_args()
 
     config_path = Path(args.config).resolve()
@@ -97,7 +101,7 @@ def main() -> None:
     if camera_calibration is not None and (args.reset_camera or not camera_calibration.exists()):
         if args.calibration_views < 8:
             raise SystemExit("Lens calibration needs at least eight chessboard views")
-        print("\nCAMERA SETUP: show a measured chessboard at varied positions and angles.")
+        print("\nCAMERA SETUP: display chessboard.png on a flat screen and show it at varied positions and angles.")
         board_dir = camera_calibration.parent / "chessboard"
         capture_args = [
             "tools/capture_chessboard.py", "--source", source,
@@ -108,18 +112,15 @@ def main() -> None:
             "--output-dir", str(board_dir),
         ]
         _run_tool(capture_args + _camera_capture_options(camera))
-        square_mm = args.square_mm
-        if square_mm is None:
-            square_mm = _positive_number("Measured chessboard square width in mm")
-        if square_mm <= 0:
-            raise SystemExit("--square-mm must be positive")
+        if args.square_size <= 0:
+            raise SystemExit("--square-size must be positive")
         images = [str(board_dir / f"view_{index:02d}.png")
                   for index in range(1, args.calibration_views + 1)]
         _run_tool([
             "tools/calibrate_camera.py", *images,
             "--columns", str(args.chessboard_columns),
             "--rows", str(args.chessboard_rows),
-            "--square-mm", str(square_mm),
+            "--square-size", str(args.square_size),
             "--output", str(camera_calibration),
         ])
 

@@ -47,11 +47,13 @@ For normal use, one command performs first-time setup and starts the system:
 python start.py
 ```
 
-The first run captures varied chessboard views, an empty field, the car's
-appearance, and four measured floor reference points. Measure the printed
-chessboard square size and pass `--square-mm VALUE`; the program asks for it if
-omitted. Later runs reuse calibration and start immediately. Nothing needs to
-be attached to the car. Do not move the camera after setup.
+The first run captures varied views of `chessboard.png` shown on a flat phone,
+tablet, or second monitor, then an empty field, the car's appearance, and four
+measured floor reference points. No printing or chessboard-square measurement
+is needed: the lens calibration uses an arbitrary square unit, and the measured
+floor points establish millimetres. Later runs reuse calibration and start
+immediately. Nothing needs to be attached to the car. Do not move the camera
+after setup.
 
 Choose the actual external camera with `python start.py --source 1` (or another
 camera index). For a recording, use `--source path/to/video.mp4`. To send packets
@@ -92,23 +94,30 @@ currently invisible car is emitted as `-1000,-1000` with image coordinates
 
 ### 1. Camera distortion
 
-The first-run wizard collects 12 sharp chessboard photographs at different
-positions and angles, then calls `cv2.calibrateCamera`. The `--columns` and
-`--rows` values are **inner corners**, not squares. To prepare a board:
+The first-run wizard collects 12 sharp views of a checkerboard displayed on a
+flat screen at different positions and angles, then calls
+`cv2.calibrateCamera`. The camera stays fixed while the screen moves. The
+`--columns` and `--rows` values are **inner corners**, not squares. Create the
+image with:
 
 ```powershell
 python tools/generate_chessboard.py --output chessboard.png
 ```
 
-Print it flat and measure the real square size. For manual calibration:
+Display the entire image without stretching it; avoid reflections and use a
+screen large enough for the camera to resolve its corners. For manual
+calibration:
 
 ```powershell
 python tools/calibrate_camera.py "captures/*.jpg" --columns 9 --rows 6 `
-  --square-mm 25 --output calibration/camera.yaml
+  --square-size 1 --output calibration/camera.yaml
 ```
 
-The default config already points to `calibration/camera.yaml`. Calibration
-must use the same resolution and focus setting as tracking.
+The square size can be an arbitrary positive unit because this project retains
+only the lens intrinsics and distortion, not the board's metric pose. The
+measured floor points define the output's millimetre scale. The default config
+already points to `calibration/camera.yaml`. Calibration must use the same
+resolution and focus setting as tracking.
 
 ### 2. Image-to-field mapping
 

@@ -34,9 +34,12 @@ measurements, and sends a UTF-8 UDP datagram.
 
 ## 2. Calibration and coordinate mapping
 
-Lens distortion is estimated from several chessboard views using
-`cv2.calibrateCamera`. We captured [N] images at the tracking resolution while
-moving and tilting the chessboard across the image. The resulting RMS
+Lens distortion is estimated from several views of a checkerboard displayed on
+a flat screen using `cv2.calibrateCamera`. We captured [N] images at the
+tracking resolution while moving and tilting the screen across the fixed
+camera's image. The board uses one arbitrary unit per square because only lens
+intrinsics and distortion are retained; the floor measurements establish the
+millimetre scale. The resulting RMS
 reprojection error was [VALUE] pixels. Runtime frames are corrected with
 precomputed undistortion maps.
 

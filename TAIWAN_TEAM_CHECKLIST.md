@@ -17,9 +17,12 @@ actual results rather than copying example values.
   quadrilateral, where extrapolation error should also be tested.
 - Measure the real usable field dimensions. `2500 × 1500 mm` in the config is an
   approximate assignment value, not a measurement of your room.
-- Prepare a flat chessboard with 9 × 6 **inner corners**. You can generate one
-  with `python tools/generate_chessboard.py`. Print it without scaling and
-  measure one actual square; enter that measured size during setup.
+- Generate `chessboard.png` with `python tools/generate_chessboard.py` and show
+  it full-screen on a flat phone, tablet, or second monitor. Keep the entire
+  9 × 6 inner-corner pattern visible and preserve square proportions (no
+  stretching). No printing or square measurement is needed for lens correction:
+  the software uses one arbitrary unit per square. The measured floor points,
+  not the screen pattern, establish millimetres.
 - Decide which physical end is the car's front. Note the car name/ID and whether
   a second car will be demonstrated. The default markerless mode supports one
   car; multiple similar cars need a different identification strategy.
@@ -66,15 +69,17 @@ toycar-receiver --port 5000
 On the camera laptop, run (replace the capitalized values):
 
 ```powershell
-python start.py --source CAMERA_INDEX --host CONTROLLER_IP --port 5000 `
-  --square-mm MEASURED_CHESSBOARD_SQUARE_MM
+python start.py --source CAMERA_INDEX --host CONTROLLER_IP --port 5000
 ```
 
 On the first run, the program guides you through these steps in order:
 
-1. Show the whole chessboard at varied positions and tilts. Press **Space** to
-   save each of 12 sharp views when the green corners appear. Cover the image
-   edges as well as the center. The camera calibration uses these views.
+1. Display `chessboard.png` on a flat screen and move that screen to varied
+   positions and tilts while the tracking camera remains fixed. Press **Space**
+   to save each of 12 sharp views when the green corners appear. Cover the
+   camera image edges as well as the center. Keep screen reflections low. The
+   camera calibration uses these views; a small phone may be too hard to see
+   from the installed camera distance, so use a larger screen if necessary.
 2. Remove the car and people from the field. Press **Space** to save an empty
    field image. Keep lighting and camera fixed afterward.
 3. Place the car on the field. Press **Space** to freeze, draw a close box around

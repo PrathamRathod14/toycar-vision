@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "toycar-vision"
+version = "1.0.0"
+description = "Low-latency global vision and UDP telemetry for tagged toy race cars"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=2.0,<3",
+  "opencv-contrib-python>=4.10,<5",
+  "PyYAML>=6.0,<7",
+]
+
+[project.optional-dependencies]
+evaluation = ["matplotlib>=3.9,<4"]
+test = ["pytest>=8,<9"]
+
+[project.scripts]
+toycar-vision = "toycar_vision.cli:main"
+toycar-receiver = "toycar_vision.receiver:main"
+toycar-evaluate = "toycar_vision.evaluation:main"
+
+[tool.setuptools.packages.find]
+include = ["toycar_vision*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+

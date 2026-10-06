@@ -1,0 +1,5 @@
+measured_x_mm,measured_y_mm,measured_theta_deg,true_x_mm,true_y_mm,true_theta_deg
+501.2,400.8,0.7,500.0,400.0,0.0
+499.5,401.1,359.4,500.0,400.0,0.0
+500.4,399.7,1.0,500.0,400.0,0.0
+

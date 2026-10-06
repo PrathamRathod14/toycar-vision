@@ -1,0 +1,45 @@
+# Configuration for one unmodified car and a laptop webcam.
+camera:
+  source: 0
+  width: 1280
+  height: 720
+  fps: 60
+  buffer_size: 1
+  calibration_file: null   # add calibration/camera.yaml after lens calibration
+
+detector:
+  type: color
+  model_file: calibration/car_color.npz
+  min_quality: 0.25
+  backprojection_threshold: 35
+  min_area_fraction: 0.0003
+  max_area_fraction: 0.20
+  min_reference_area_ratio: 0.08
+  max_reference_area_ratio: 4.0
+  morphology_kernel: 9
+
+field:
+  size_mm: [2500.0, 1500.0]
+  homography_file: calibration/homography.yaml
+  auto_homography:
+    enabled: false
+
+cars:
+  - car_id: 1
+    name: Toy Car 1
+    heading_offset_deg: 0.0
+
+tracking:
+  position_time_constant_s: 0.035
+  velocity_time_constant_s: 0.080
+  max_gap_s: 0.25
+
+network:
+  host: 127.0.0.1
+  port: 5000
+  emit_missing: true
+
+display:
+  enabled: true
+  scale: 1.0
+

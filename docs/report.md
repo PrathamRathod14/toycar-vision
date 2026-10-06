@@ -34,16 +34,13 @@ measurements, and sends a UTF-8 UDP datagram.
 
 ## 2. Calibration and coordinate mapping
 
-Lens distortion is estimated from several views of a checkerboard displayed on
-a flat screen using `cv2.calibrateCamera`. We captured [N] images at the
-tracking resolution while moving and tilting the screen across the fixed
-camera's image. The board uses one arbitrary unit per square because only lens
-intrinsics and distortion are retained; the floor measurements establish the
-millimetre scale. The resulting RMS
-reprojection error was [VALUE] pixels. Runtime frames are corrected with
-precomputed undistortion maps.
+The default setup does not use a calibration target. Lens distortion was not
+estimated with `cv2.calibrateCamera`; this is a limitation relative to the
+method named in the assignment and may increase error near image edges. If the
+team later uses a camera calibration file, replace this paragraph with the
+actual target, number of views, and RMS reprojection error.
 
-Because the playing surface is planar, a 3 by 3 homography maps undistorted image
+Because the playing surface is planar, a 3 by 3 homography maps image
 coordinates `(u,v)` to field coordinates `(x,y)`. With the camera fixed, the user
 clicks four independently measured floor reference points. `cv2.findHomography`
 then calculates the image-to-world transform. Physical output uses millimetres. Zero

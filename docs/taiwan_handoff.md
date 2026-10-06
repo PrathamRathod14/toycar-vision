@@ -10,7 +10,7 @@ cannot be assumed to be the whole field boundary or car ID tags.
 
 | Assignment requirement | Current implementation | Physical check still needed |
 |---|---|---|
-| Oblique camera; lens calibration and image-to-world homography | `tools/calibrate_camera.py`, `tools/capture_homography.py`, and `CameraUndistorter`/`FieldMapper` | Calibrate their exact camera, resolution, lens, and field after mounting the camera. |
+| Oblique camera; lens calibration and image-to-world homography | The default workflow performs direct four-point homography with `cv2.findHomography`. `cv2.calibrateCamera` remains available as an optional tool but is not run without a calibration target. | Measure four floor points and evaluate edge error. Confirm with instructors whether the no-target workflow is acceptable for the brief. |
 | Approximately 1.5 m by 2.5 m flat field | Field dimensions are entered in millimetres during corner setup | Measure the actual four reference points. The defaults are examples only. |
 | Track and identify a toy car | Default mode is a prototype for **one** unmodified car. It combines an empty-field reference and car colour model; screenshot diagnostics below explain why the original colour-only method was inadequate. | Calibrate and tune on the actual car and raw camera video. Test whether its front and rear are distinguishable. |
 | Multiple cars if used | Optional ArUco mode supports distinct tags on cars | Markerless colour mode does not identify multiple similar cars. Agree on car count before a multi-car demonstration. |
@@ -53,12 +53,11 @@ adding an empty-field reference; that new mode still needs physical testing.
 2. Copy `config.color.example.yaml` to a team-specific YAML file. Set the actual
    camera index or stream URL, car name/ID, output host, and UDP port. Keep the
    field size as a measured value; 2500 × 1500 mm is only an approximate brief.
-3. Display the generated chessboard on a flat phone, tablet, or second screen
-   without stretching its squares. Capture at least eight views at the
-   **tracking resolution** while the camera remains fixed and the screen moves.
-   Physical square size is not needed for lens intrinsics; the wizard uses an
-   arbitrary square unit. Use the same correction during field calibration
-   and runtime.
+3. Leave `camera.calibration_file: null` for the no-checkerboard workflow.
+   Lens distortion will not be corrected, so include image-edge test positions
+   in the physical evaluation. The assignment names `calibrateCamera`; obtain
+   instructor acceptance or suitable camera calibration data if that step is
+   compulsory.
 4. Run `python start.py --config team.yaml --source 1 --host CONTROLLER_IP`.
    The wizard captures an empty field, teaches the actual car appearance and
    front, and asks for four floor points. Set `field.reference_points_mm` for

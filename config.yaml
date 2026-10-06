@@ -5,7 +5,7 @@ camera:
   height: 720
   fps: 60
   buffer_size: 1
-  calibration_file: calibration/camera.yaml
+  calibration_file: null  # no calibration target in the default setup
 
 detector:
   type: color

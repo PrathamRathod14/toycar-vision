@@ -48,7 +48,7 @@ def main() -> None:
     parser.add_argument("--config", default=str(ROOT / "config.yaml"), help="configuration YAML")
     parser.add_argument("--source", help="override camera index, video file, or stream URL")
     parser.add_argument("--reset-car", action="store_true", help="teach the car colours again")
-    parser.add_argument("--reset-camera", action="store_true", help="repeat lens calibration")
+    parser.add_argument("--reset-camera", action="store_true", help="repeat optional lens calibration")
     parser.add_argument("--reset-background", action="store_true", help="capture the empty field again")
     parser.add_argument("--reset-field", action="store_true", help="select the field corners again")
     parser.add_argument("--host", help="override UDP destination host")
@@ -186,6 +186,8 @@ def main() -> None:
         tool_args.extend(_camera_capture_options(camera))
         _run_tool(tool_args)
 
+    if camera_calibration is None:
+        print("\nLens correction is disabled; the measured floor points define the field mapping.")
     print("\nStarting Toy Car Vision. Press Q in the camera window to stop.")
     run(config, host_override=args.host, port_override=args.port,
         headless=args.headless, metrics_csv=args.metrics_csv,

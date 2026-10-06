@@ -17,12 +17,12 @@ actual results rather than copying example values.
   quadrilateral, where extrapolation error should also be tested.
 - Measure the real usable field dimensions. `2500 × 1500 mm` in the config is an
   approximate assignment value, not a measurement of your room.
-- Generate `chessboard.png` with `python tools/generate_chessboard.py` and show
-  it full-screen on a flat phone, tablet, or second monitor. Keep the entire
-  9 × 6 inner-corner pattern visible and preserve square proportions (no
-  stretching). No printing or square measurement is needed for lens correction:
-  the software uses one arbitrary unit per square. The measured floor points,
-  not the screen pattern, establish millimetres.
+- No checkerboard or screen pattern is needed in the default workflow. The
+  measured floor points establish millimetres through a planar homography.
+  Lens distortion remains uncorrected; include edge positions in the accuracy
+  test and report this limitation. The brief also names `calibrateCamera`, so
+  ask the instructors whether direct homography alone is acceptable if a
+  calibration target will not be used.
 - Decide which physical end is the car's front. Note the car name/ID and whether
   a second car will be demonstrated. The default markerless mode supports one
   car; multiple similar cars need a different identification strategy.
@@ -39,8 +39,9 @@ python -m pip install -e ".[evaluation,test]"
 
 Edit `config.yaml`: set `camera.source`, the target `width`, `height`, and `fps`,
 the car's `car_id` and `name`, and `network.host` to the controller laptop's IP
-address. Keep `camera.calibration_file`, `detector.background_file`,
-`detector.model_file`, and `field.homography_file` set to their default paths.
+address. Leave `camera.calibration_file: null`. Keep
+`detector.background_file`, `detector.model_file`, and
+`field.homography_file` set to their default paths.
 
 If the four floor points are not exact corners of a measured rectangle, add
 their independently measured coordinates in click order:
@@ -74,30 +75,22 @@ python start.py --source CAMERA_INDEX --host CONTROLLER_IP --port 5000
 
 On the first run, the program guides you through these steps in order:
 
-1. Display `chessboard.png` on a flat screen and move that screen to varied
-   positions and tilts while the tracking camera remains fixed. Press **Space**
-   to save each of 12 sharp views when the green corners appear. Cover the
-   camera image edges as well as the center. Keep screen reflections low. The
-   camera calibration uses these views; a small phone may be too hard to see
-   from the installed camera distance, so use a larger screen if necessary.
-2. Remove the car and people from the field. Press **Space** to save an empty
+1. Remove the car and people from the field. Press **Space** to save an empty
    field image. Keep lighting and camera fixed afterward.
-3. Place the car on the field. Press **Space** to freeze, draw a close box around
+2. Place the car on the field. Press **Space** to freeze, draw a close box around
    it, then click its **front**. The program stores the car appearance model.
    If it warns that front and rear colours are too similar, test heading carefully;
    a visible car tag may be needed to identify direction reliably.
-4. Click the four measured floor points **top-left, top-right, bottom-right,
+3. Click the four measured floor points **top-left, top-right, bottom-right,
    bottom-left** and press Enter. Confirm that their ordering matches the
    `reference_points_mm` coordinates in your YAML.
-5. Watch the overlay while moving the car across the entire field. The arrow
+4. Watch the overlay while moving the car across the entire field. The arrow
    must point to the real front, and the UDP receiver must show changing pose
    records. Move the car out of view and confirm `-1000.000,-1000.000` is sent.
 
 For later runs, use the same `python start.py --source ... --host ...` command.
-If the camera or lens changes, use `--reset-camera`; this also repeats the empty
-field, car, and field calibration. If lighting or background changes, use
-`--reset-background --reset-car`. If the camera moves without changing its lens,
-use `--reset-background --reset-car --reset-field`.
+If the camera moves, use `--reset-background --reset-car --reset-field`. If
+lighting or background changes, use `--reset-background --reset-car`.
 
 If the overlay fails, save raw camera frames and adjust `background_threshold`,
 `min_color_strength`, `min_area_fraction`, `min_reference_area_ratio`, and

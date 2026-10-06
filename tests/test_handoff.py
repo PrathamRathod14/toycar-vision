@@ -130,6 +130,30 @@ def test_first_run_guides_camera_background_car_and_field(tmp_path, monkeypatch)
         assert "--fps" in call and "--exposure" in call
 
 
+def test_default_setup_uses_floor_points_without_chessboard(tmp_path, monkeypatch):
+    config = tmp_path / "config.yaml"
+    config.write_text(yaml.safe_dump({
+        "camera": {"source": 0, "width": 320, "height": 240,
+                   "calibration_file": None},
+        "detector": {"type": "color", "model_file": "calibration/car.npz",
+                     "background_file": "calibration/empty.png"},
+        "field": {"homography_file": "calibration/field.yaml",
+                  "reference_points_mm": [[0, 0], [1000, 0], [1000, 500], [0, 500]]},
+        "cars": [{"car_id": 1, "name": "Test Car"}],
+        "network": {"port": 5000},
+    }), encoding="utf-8")
+    tool_calls = []
+    monkeypatch.setattr(start, "_run_tool", lambda args: tool_calls.append(args))
+    monkeypatch.setattr(start, "run", lambda config, **kwargs: None)
+    monkeypatch.setattr(sys, "argv", ["start.py", "--config", str(config)])
+    start.main()
+    assert [call[0] for call in tool_calls] == [
+        "tools/capture_background.py", "tools/calibrate_color_car.py",
+        "tools/capture_homography.py",
+    ]
+    assert all("--camera-calibration" not in call for call in tool_calls)
+
+
 def test_color_frame_reaches_udp_receiver_with_mapped_pose(tmp_path, monkeypatch):
     background = np.full((240, 320, 3), 255, dtype=np.uint8)
     frame = background.copy()

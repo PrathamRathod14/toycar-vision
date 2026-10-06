@@ -7,12 +7,10 @@ python -m pip install -e ".[evaluation,test]"
 python start.py
 ```
 
-Before the first run, create `chessboard.png` with
-`python tools/generate_chessboard.py` and display it on a flat phone, tablet, or
-second monitor without stretching the squares. The program captures views of
-that screen for lens calibration, then an empty field image, the car's
-appearance and front, and four measured floor reference points. No printing or
-screen-square measurement is needed. It saves the setup and starts tracking.
+The default setup uses no checkerboard. On the first run, the program captures
+an empty field image, the car's appearance and front, and four measured floor
+reference points. It saves that setup and starts tracking. Keep the camera
+fixed afterward.
 
 Later, the same command starts tracking immediately:
 
@@ -20,8 +18,8 @@ Later, the same command starts tracking immediately:
 python start.py
 ```
 
-If the camera changes, run `python start.py --reset-camera`. If lighting or the
-background changes, use `--reset-background --reset-car`.
+If the camera moves, use `--reset-background --reset-car --reset-field`. If
+lighting or the background changes, use `--reset-background --reset-car`.
 
 For the NTNU camera and controller, select the camera and UDP destination:
 
@@ -34,4 +32,9 @@ measured floor references; they are not proven to be the full field boundary. Se
 [the Taiwan handoff](docs/taiwan_handoff.md) before collecting results.
 For the exact measurements, commands, and evaluation data to collect, use the
 [Taiwan team checklist](TAIWAN_TEAM_CHECKLIST.md).
+
+The no-target default calculates a planar homography but does not correct lens
+distortion. The assignment also names `calibrateCamera`; if that method is
+required by the examiner, a calibration target or suitable existing camera
+calibration data is still needed.
 

@@ -19,7 +19,7 @@ in [Taiwan handoff](docs/taiwan_handoff.md).
 
 ## What is included
 
-- camera distortion calibration using `cv2.calibrateCamera`;
+- optional camera distortion calibration using `cv2.calibrateCamera`;
 - manually calibrated image-to-field homography;
 - markerless empty-field and colour-based car position and heading detection;
 - time-aware filtering for position, velocity, and angular velocity;
@@ -47,13 +47,11 @@ For normal use, one command performs first-time setup and starts the system:
 python start.py
 ```
 
-The first run captures varied views of `chessboard.png` shown on a flat phone,
-tablet, or second monitor, then an empty field, the car's appearance, and four
-measured floor reference points. No printing or chessboard-square measurement
-is needed: the lens calibration uses an arbitrary square unit, and the measured
-floor points establish millimetres. Later runs reuse calibration and start
-immediately. Nothing needs to be attached to the car. Do not move the camera
-after setup.
+The default first run uses **no checkerboard**. It captures an empty field, the
+car's appearance, and four measured floor reference points. Those points
+establish millimetres through a planar homography. Later runs reuse the setup
+and start immediately. Nothing needs to be attached to the car. Do not move
+the camera after setup.
 
 Choose the actual external camera with `python start.py --source 1` (or another
 camera index). For a recording, use `--source path/to/video.mp4`. To send packets
@@ -92,51 +90,37 @@ currently invisible car is emitted as `-1000,-1000` with image coordinates
 
 ## Calibration
 
-### 1. Camera distortion
+### Optional camera distortion calibration
 
-The first-run wizard collects 12 sharp views of a checkerboard displayed on a
-flat screen at different positions and angles, then calls
-`cv2.calibrateCamera`. The camera stays fixed while the screen moves. The
-`--columns` and `--rows` values are **inner corners**, not squares. Create the
-image with:
+The default `config.yaml` sets `camera.calibration_file: null`, so no lens
+calibration target is requested. The assignment explicitly names
+`calibrateCamera`; direct homography without lens calibration may not satisfy
+that part of the brief. This choice must be discussed with the instructors and
+reported honestly. It also leaves lens distortion uncorrected, especially
+important near the image edges.
 
-```powershell
-python tools/generate_chessboard.py --output chessboard.png
-```
+If suitable lens-calibration data becomes available later, set
+`camera.calibration_file` to that YAML path. It must match the tracking camera,
+resolution, and focus setting. The no-target workflow does not produce that
+file or claim a lens-calibration result.
 
-Display the entire image without stretching it; avoid reflections and use a
-screen large enough for the camera to resolve its corners. For manual
-calibration:
-
-```powershell
-python tools/calibrate_camera.py "captures/*.jpg" --columns 9 --rows 6 `
-  --square-size 1 --output calibration/camera.yaml
-```
-
-The square size can be an arbitrary positive unit because this project retains
-only the lens intrinsics and distortion, not the board's metric pose. The
-measured floor points define the output's millimetre scale. The default config
-already points to `calibration/camera.yaml`. Calibration must use the same
-resolution and focus setting as tracking.
-
-### 2. Image-to-field mapping
+### Image-to-field mapping
 
 Measure four floor reference points and keep the camera fixed. If they are
 the corners of a true rectangle, generate the homography with:
 
 ```powershell
-python tools/capture_homography.py --source 0 --width-mm 2500 `
-  --height-mm 1500 --camera-calibration calibration/camera.yaml `
-  --output calibration/homography.yaml
+python tools/capture_homography.py --source 0 --width-mm MEASURED_WIDTH `
+  --height-mm MEASURED_HEIGHT --output calibration/homography.yaml
 ```
 
-Click top-left, top-right, bottom-right, bottom-left, then press Enter. Supply
-the same camera-calibration file used by the server so the clicked and runtime
-image coordinates match. For four arbitrary measured positions, set
+Click top-left, top-right, bottom-right, bottom-left, then press Enter. If an
+optional camera-calibration file is used, supply it here too so the clicked and
+runtime image coordinates match. For four arbitrary measured positions, set
 `field.reference_points_mm` in the config or use `--world-points-mm` with eight
 measured coordinates instead of width and height.
 
-### 3. Heading convention
+### Heading convention
 
 During colour calibration, clicking the car's front teaches the detector the
 different colour patterns of its front and rear halves. The reported angle is

@@ -10,18 +10,19 @@
 ## 1. Approach and design rationale
 
 We implemented a global vision server that tracks one unmodified coloured toy
-car on an approximately 2500 mm by 1500 mm planar field. A webcam observes
-the field from an oblique angle. The car is detected using an HSV colour model
-learned interactively from one camera frame. No marker or physical modification
-of the car is required.
+car on a measured planar field of approximately 2500 mm by 1500 mm. A webcam
+observes the field from an oblique angle. The car is detected using a fixed
+empty-field reference and an HSV colour model learned interactively from one
+camera frame. No marker or physical modification of the car is required.
 
 We selected colour detection because the car in the assignment examples has
 distinctive coloured body regions and the assignment explicitly allows this approach. It is
 computationally cheaper than a CNN and does not require a large labelled training
 dataset. During calibration, the user selects the car and clicks its front. The
 system stores a complete colour histogram plus separate front- and rear-half
-histograms. At runtime, colour backprojection and morphological filtering locate
-the car. Principal-component analysis gives its long axis, while the two colour
+histograms. At runtime, foreground difference from the empty field proposes
+car regions, while colour similarity and size checks reject distractions.
+Principal-component analysis gives its long axis, while the two colour
 signatures resolve the 180-degree direction ambiguity. The limitation is that
 lighting changes and similarly coloured background objects can cause errors.
 
@@ -41,13 +42,13 @@ precomputed undistortion maps.
 
 Because the playing surface is planar, a 3 by 3 homography maps undistorted image
 coordinates `(u,v)` to field coordinates `(x,y)`. With the camera fixed, the user
-clicks the four measured corners of the usable field. `cv2.findHomography` then
-calculates the image-to-world transform. Physical output uses millimetres. Zero
+clicks four independently measured floor reference points. `cv2.findHomography`
+then calculates the image-to-world transform. Physical output uses millimetres. Zero
 degrees is the positive field x-axis, and angles increase toward positive y.
 
 The visible car body lies above the calibrated floor plane, so an angled camera
-can introduce parallax. We measured this effect as part of the mapping-accuracy
-experiment rather than assuming the transform was exact.
+can introduce parallax. The mapping-accuracy experiment must measure this
+effect rather than assuming the transform is exact.
 
 ## 3. Tracking, velocity, and communication
 
@@ -78,8 +79,9 @@ frame rate.
 We recorded a held-out dataset of [N] labelled frames: [P] frames containing the
 car and [Q] negative frames. The negatives included an empty field and
 [SIMILARLY COLOURED HARD NEGATIVES]. Calibration frames were excluded. The
-detector confidence combines colour-backprojection strength and contour
-solidity. Sweeping the confidence threshold produced the ROC curve in Figure 1.
+detector confidence combines colour-backprojection strength, foreground
+difference, and contour solidity. A detection must also fall near the manually
+marked car center. Sweeping the confidence threshold produced Figure 1.
 
 _Insert `results/roc_curve.png` as Figure 1._
 

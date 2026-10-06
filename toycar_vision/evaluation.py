@@ -43,7 +43,9 @@ def evaluate_detection(csv_path: str, output_path: str, label_column: str, score
     axis.grid(True, alpha=0.25)
     axis.legend(loc="lower right")
     figure.tight_layout()
-    figure.savefig(output_path, dpi=180)
+    output = Path(output_path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    figure.savefig(output, dpi=180)
     plt.close(figure)
     return {"samples": len(rows), "positives": int(labels.sum()),
             "negatives": int((~labels).sum()), "auc": auc}

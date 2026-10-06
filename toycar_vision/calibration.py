@@ -17,6 +17,7 @@ class CameraUndistorter:
         self.image_size: tuple[int, int] | None = None
         self._maps: tuple[np.ndarray, np.ndarray] | None = None
         self._map_size: tuple[int, int] | None = None
+        self._new_matrix: np.ndarray | None = None
         if calibration_file:
             with Path(calibration_file).open("r", encoding="utf-8") as handle:
                 data = yaml.safe_load(handle)
@@ -48,7 +49,19 @@ class CameraUndistorter:
                 cv2.CV_16SC2,
             )
             self._map_size = size
+            self._new_matrix = new_matrix
         return cv2.remap(frame, self._maps[0], self._maps[1], cv2.INTER_LINEAR)
+
+    def transform_points(self, points: Iterable[tuple[float, float]]) -> np.ndarray:
+        """Map raw image coordinates into the space returned by apply()."""
+        array = np.asarray(list(points), dtype=np.float64).reshape(-1, 1, 2)
+        if self.camera_matrix is None or self.distortion is None:
+            return array.reshape(-1, 2)
+        if self._new_matrix is None:
+            raise RuntimeError("Apply a frame before transforming its points")
+        return cv2.undistortPoints(
+            array, self.camera_matrix, self.distortion, P=self._new_matrix
+        ).reshape(-1, 2)
 
 
 class FieldMapper:

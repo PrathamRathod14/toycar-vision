@@ -29,3 +29,13 @@ def test_heading_does_not_jump_at_360_boundary():
     assert second.theta_deg == pytest.approx(1.0)
     assert second.angular_velocity_deg_s == pytest.approx(20.0)
 
+
+def test_implausible_position_jump_is_reported_missing():
+    tracker = MultiCarTracker(position_time_constant_s=0.0, max_speed_mm_s=10000.0)
+    tracker.update(measurement(0.0), 0)
+    outlier = tracker.update(measurement(1000.0), 16_667)
+    assert not outlier.detected
+    assert outlier.x_mm == -1000.0
+    valid = tracker.update(measurement(90.0), 33_334)
+    assert valid.detected
+

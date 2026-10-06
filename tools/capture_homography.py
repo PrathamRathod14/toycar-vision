@@ -23,8 +23,14 @@ def main() -> None:
     parser.add_argument("--source", default="0", help="camera index, video, or image path")
     parser.add_argument("--camera-width", type=int, default=1280)
     parser.add_argument("--camera-height", type=int, default=720)
+    parser.add_argument("--fps", type=float)
+    parser.add_argument("--exposure", type=float)
     parser.add_argument("--width-mm", type=float, default=2500.0)
     parser.add_argument("--height-mm", type=float, default=1500.0)
+    parser.add_argument(
+        "--world-points-mm", nargs=8, type=float, metavar="MM",
+        help="measured x,y pairs for TL, TR, BR, BL; overrides width and height",
+    )
     parser.add_argument("--output", default="calibration/homography.yaml")
     parser.add_argument(
         "--camera-calibration",
@@ -39,6 +45,10 @@ def main() -> None:
         capture = cv2.VideoCapture(source)
         capture.set(cv2.CAP_PROP_FRAME_WIDTH, args.camera_width)
         capture.set(cv2.CAP_PROP_FRAME_HEIGHT, args.camera_height)
+        if args.fps is not None:
+            capture.set(cv2.CAP_PROP_FPS, args.fps)
+        if args.exposure is not None:
+            capture.set(cv2.CAP_PROP_EXPOSURE, args.exposure)
         ok, image = capture.read()
         if not ok:
             raise SystemExit(f"Could not read {source}")
@@ -71,12 +81,15 @@ def main() -> None:
         if key in (10, 13) and len(points) == 4:
             break
 
-    world = np.asarray([
-        [0.0, 0.0],
-        [args.width_mm, 0.0],
-        [args.width_mm, args.height_mm],
-        [0.0, args.height_mm],
-    ])
+    if args.world_points_mm is not None:
+        world = np.asarray(args.world_points_mm, dtype=float).reshape(4, 2)
+    else:
+        world = np.asarray([
+            [0.0, 0.0],
+            [args.width_mm, 0.0],
+            [args.width_mm, args.height_mm],
+            [0.0, args.height_mm],
+        ])
     save_homography(args.output, np.asarray(points, dtype=float), world)
     print(f"Saved {args.output}")
     if capture is not None:

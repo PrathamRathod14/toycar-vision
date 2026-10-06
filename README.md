@@ -2,24 +2,26 @@
 
 An OpenCV prototype intended to track one unmodified coloured toy car, map
 its image coordinates onto a measured field (approximately 2.5 m x 1.5 m),
-estimates motion, and sends UTF-8 telemetry over UDP. It accepts an external
+estimate motion, and send UTF-8 telemetry over UDP. It accepts an external
 webcam, a camera stream, or a recorded video as input.
 An older ArUco detector remains available as an optional alternative.
 
-**Status:** The assignment screenshots expose failures in the current colour
-detector: it can choose background instead of the car, or miss the small car on
-tiles. The code and synthetic UDP pipeline run, but tracking accuracy and 60 FPS
-on the NTNU camera have not been established. Use raw camera footage to tune and
-evaluate the detector before a live controller demonstration.
+**Status:** The assignment screenshots exposed failures in the original
+colour-only detector. The default setup now combines a saved empty-field image
+with a calibrated car-colour model and rejects implausible position jumps. The
+code and synthetic UDP pipeline run, but tracking accuracy and 60 FPS on the
+NTNU camera have not been established. Use raw camera footage to tune and
+evaluate it before a live controller demonstration.
 
-For the assignment comparison and a checklist for the NTNU camera and car,
-see [Taiwan handoff](docs/taiwan_handoff.md).
+The physical setup, measurement, and submission steps are in
+[Taiwan team checklist](TAIWAN_TEAM_CHECKLIST.md). The requirement comparison is
+in [Taiwan handoff](docs/taiwan_handoff.md).
 
 ## What is included
 
 - camera distortion calibration using `cv2.calibrateCamera`;
 - manually calibrated image-to-field homography;
-- markerless colour-based car position and heading detection;
+- markerless empty-field and colour-based car position and heading detection;
 - time-aware filtering for position, velocity, and angular velocity;
 - configurable UDP host/port and the assignment's text wire format;
 - live overlay, headless mode, and runtime metrics capture;
@@ -34,7 +36,6 @@ Use Python 3.10 or newer. From this directory:
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install -e ".[evaluation,test]"
-Copy-Item config.color.example.yaml config.yaml
 ```
 
 Use a plain floor or a large plain sheet, keep the laptop camera fixed, and use
@@ -46,9 +47,11 @@ For normal use, one command performs first-time setup and starts the system:
 python start.py
 ```
 
-The first run guides you through selecting the car and field corners. Later runs
-reuse the saved setup and start immediately. Nothing needs to be attached to the
-car. Do not move the camera after field setup.
+The first run captures varied chessboard views, an empty field, the car's
+appearance, and four measured floor reference points. Measure the printed
+chessboard square size and pass `--square-mm VALUE`; the program asks for it if
+omitted. Later runs reuse calibration and start immediately. Nothing needs to
+be attached to the car. Do not move the camera after setup.
 
 Choose the actual external camera with `python start.py --source 1` (or another
 camera index). For a recording, use `--source path/to/video.mp4`. To send packets
@@ -79,7 +82,9 @@ Example packet:
 
 The timestamp is microseconds since server start. Position is millimetres,
 heading is degrees in the field coordinate system, linear velocity is mm/s,
-and angular velocity is degrees/s. `u,v` are image pixels. A configured but
+and angular velocity is degrees/s. The quoted car name is the wire-format ID
+used by the assignment example; the numeric `car_id` stays internal. `u,v` are
+image pixels. A configured but
 currently invisible car is emitted as `-1000,-1000` with image coordinates
 `-1,-1`; set `network.emit_missing: false` to omit missing cars.
 
@@ -87,22 +92,28 @@ currently invisible car is emitted as `-1000,-1000` with image coordinates
 
 ### 1. Camera distortion
 
-Take at least 10-20 sharp chessboard photographs across the entire image at
-different angles. The `--columns` and `--rows` values are **inner corners**, not
-squares.
+The first-run wizard collects 12 sharp chessboard photographs at different
+positions and angles, then calls `cv2.calibrateCamera`. The `--columns` and
+`--rows` values are **inner corners**, not squares. To prepare a board:
+
+```powershell
+python tools/generate_chessboard.py --output chessboard.png
+```
+
+Print it flat and measure the real square size. For manual calibration:
 
 ```powershell
 python tools/calibrate_camera.py "captures/*.jpg" --columns 9 --rows 6 `
   --square-mm 25 --output calibration/camera.yaml
 ```
 
-Then set `camera.calibration_file: calibration/camera.yaml`. Calibration must be
-performed at the same resolution and focus setting used during tracking.
+The default config already points to `calibration/camera.yaml`. Calibration
+must use the same resolution and focus setting as tracking.
 
 ### 2. Image-to-field mapping
 
-Measure the rectangular playing area and keep the camera fixed. Generate the
-homography by clicking its four corners:
+Measure four floor reference points and keep the camera fixed. If they are
+the corners of a true rectangle, generate the homography with:
 
 ```powershell
 python tools/capture_homography.py --source 0 --width-mm 2500 `
@@ -112,7 +123,9 @@ python tools/capture_homography.py --source 0 --width-mm 2500 `
 
 Click top-left, top-right, bottom-right, bottom-left, then press Enter. Supply
 the same camera-calibration file used by the server so the clicked and runtime
-image coordinates match.
+image coordinates match. For four arbitrary measured positions, set
+`field.reference_points_mm` in the config or use `--world-points-mm` with eight
+measured coordinates instead of width and height.
 
 ### 3. Heading convention
 
@@ -138,20 +151,21 @@ prevents stable colour detection.
 
 The metrics CSV records detector output, not ground truth. For a valid ROC test,
 save held-out camera frames containing the car, an empty field, and difficult
-background objects. Label them in a CSV with `image_path,present` (`present` is
-0 or 1). Do not include frames used to calibrate the colour model. Then run:
+background objects. Label `image_path,present,center_u,center_v,radius_px` in a
+CSV; positives need a manually marked center and match radius. Do not include
+calibration frames. Then run:
 
 ```powershell
+python tools/collect_frames.py --source 0 --output-dir captures/heldout
 python tools/score_labeled_frames.py --config config.yaml `
-  --labels labels.csv --output results/scored_frames.csv
+  --labels captures/heldout/labels.csv --output results/scored_frames.csv
 toycar-evaluate detection --csv results/scored_frames.csv `
   --output results/roc_curve.png
 ```
 
 The scorer disables only the final quality cutoff, so the ROC sweep can test
-all quality thresholds. It keeps the configured colour segmentation settings.
-Include hard negatives with colours similar to the car rather than using only
-empty frames.
+all quality thresholds. It counts a detection at the wrong image location as a
+miss and false match. Include hard negatives with colours similar to the car.
 
 For mapping accuracy, place a stationary car at multiple independently measured
 locations and orientations, collect repeated readings with `--metrics-csv`,

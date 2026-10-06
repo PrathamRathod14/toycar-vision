@@ -41,7 +41,14 @@ def main() -> None:
             print(f"skip unreadable: {path}")
             continue
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        image_size = (gray.shape[1], gray.shape[0])
+        current_size = (gray.shape[1], gray.shape[0])
+        if image_size is None:
+            image_size = current_size
+        elif current_size != image_size:
+            raise SystemExit(
+                f"Calibration images have mixed sizes: {path} is {current_size}, "
+                f"expected {image_size}"
+            )
         found, corners = cv2.findChessboardCorners(
             gray,
             pattern_size,
@@ -70,7 +77,8 @@ def main() -> None:
         projected, _ = cv2.projectPoints(
             object_view, rotation, translation, camera_matrix, distortion
         )
-        per_view_errors.append(float(cv2.norm(image_view, projected, cv2.NORM_L2) / len(projected)))
+        squared_error = float(cv2.norm(image_view, projected, cv2.NORM_L2SQR))
+        per_view_errors.append(float(np.sqrt(squared_error / len(projected))))
 
     payload = {
         "image_size": list(image_size),

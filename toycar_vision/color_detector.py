@@ -80,6 +80,10 @@ class ColorCarDetector:
         min_reference_area_ratio: float = 0.08,
         max_reference_area_ratio: float = 4.0,
         morphology_kernel: int = 9,
+        background_file: str | Path | None = None,
+        background_threshold: int = 25,
+        background_kernel: int = 3,
+        min_color_strength: float = 0.04,
     ) -> None:
         with np.load(Path(model_file)) as model:
             self.detection_hist = model["detection_hist"].astype(np.float32)
@@ -98,6 +102,19 @@ class ColorCarDetector:
             raise ValueError("Invalid reference-area ratio limits")
         kernel_size = max(3, int(morphology_kernel) | 1)
         self.kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernel_size, kernel_size))
+        self.background = None
+        if background_file is not None:
+            self.background = cv2.imread(str(background_file))
+            if self.background is None:
+                raise ValueError(f"Could not read empty-field image: {background_file}")
+        self.background_threshold = int(background_threshold)
+        self.min_color_strength = float(min_color_strength)
+        if not 0 <= self.min_color_strength <= 1:
+            raise ValueError("min_color_strength must be between 0 and 1")
+        background_kernel_size = max(3, int(background_kernel) | 1)
+        self.background_kernel = cv2.getStructuringElement(
+            cv2.MORPH_ELLIPSE, (background_kernel_size, background_kernel_size)
+        )
 
     def _orientation(self, hsv: np.ndarray, contour: np.ndarray, center: np.ndarray) -> np.ndarray:
         points = contour.reshape(-1, 2).astype(np.float32)
@@ -143,15 +160,28 @@ class ColorCarDetector:
         backprojection = cv2.calcBackProject(
             [hsv], [0, 1], self.detection_hist, _HIST_RANGES, 1.0
         )
-        _unused, binary = cv2.threshold(
-            backprojection, self.backprojection_threshold, 255, cv2.THRESH_BINARY
-        )
-        binary = cv2.morphologyEx(binary, cv2.MORPH_OPEN, self.kernel)
-        binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, self.kernel, iterations=2)
+        difference = None
+        if self.background is None:
+            _unused, binary = cv2.threshold(
+                backprojection, self.backprojection_threshold, 255, cv2.THRESH_BINARY
+            )
+            binary = cv2.morphologyEx(binary, cv2.MORPH_OPEN, self.kernel)
+            binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, self.kernel, iterations=2)
+        else:
+            if frame.shape != self.background.shape:
+                raise ValueError("Empty-field image and camera frame have different sizes")
+            difference = cv2.cvtColor(
+                cv2.absdiff(frame, self.background), cv2.COLOR_BGR2GRAY
+            )
+            _unused, binary = cv2.threshold(
+                difference, self.background_threshold, 255, cv2.THRESH_BINARY
+            )
+            binary = cv2.morphologyEx(binary, cv2.MORPH_OPEN, self.background_kernel)
+            binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, self.background_kernel)
         contours, _hierarchy = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         frame_area = float(frame.shape[0] * frame.shape[1])
-        candidates: list[tuple[float, Detection]] = []
+        candidates: list[tuple[float, float, np.ndarray, np.ndarray, tuple]] = []
         for contour in contours:
             area = float(cv2.contourArea(contour))
             if not self.min_area_fraction * frame_area <= area <= self.max_area_fraction * frame_area:
@@ -176,25 +206,37 @@ class ColorCarDetector:
             colour_strength = float(cv2.mean(
                 backprojection[y:y + roi_height, x:x + roi_width], mask=contour_mask
             )[0] / 255.0)
-            solidity = min(1.0, area / hull_area)
-            quality = max(0.0, min(1.0, 0.75 * colour_strength + 0.25 * solidity))
-            if quality < self.min_quality:
+            if difference is not None and colour_strength < self.min_color_strength:
                 continue
-            direction = self._orientation(hsv, contour, center)
-            heading_distance = max(width, height) * 0.45
-            heading = center + direction * heading_distance
-            corners = cv2.boxPoints(rectangle).astype(np.float64)
-            candidates.append((
-                quality * area,
-                Detection(
-                    marker_id=self.car_id,
-                    center_uv=(float(center[0]), float(center[1])),
-                    heading_point_uv=(float(heading[0]), float(heading[1])),
-                    corners=corners,
-                    quality=quality,
-                ),
-            ))
+            solidity = min(1.0, area / hull_area)
+            if difference is None:
+                quality = 0.75 * colour_strength + 0.25 * solidity
+            else:
+                foreground_strength = float(cv2.mean(
+                    difference[y:y + roi_height, x:x + roi_width], mask=contour_mask
+                )[0] / 255.0)
+                quality = 0.45 * colour_strength + 0.35 * foreground_strength + 0.20 * solidity
+            quality = max(0.0, min(1.0, quality))
+            if self.reference_area is not None:
+                area_ratio = area / self.reference_area
+                size_similarity = min(area_ratio, 1.0 / area_ratio) ** 0.5
+            else:
+                size_similarity = 1.0
+            candidates.append((quality * size_similarity, quality, contour, center, rectangle))
         if not candidates:
             return []
-        return [max(candidates, key=lambda item: item[0])[1]]
+        _rank, quality, contour, center, rectangle = max(candidates, key=lambda item: item[0])
+        if quality < self.min_quality:
+            return []
+        direction = self._orientation(hsv, contour, center)
+        heading_distance = max(rectangle[1]) * 0.45
+        heading = center + direction * heading_distance
+        corners = cv2.boxPoints(rectangle).astype(np.float64)
+        return [Detection(
+            marker_id=self.car_id,
+            center_uv=(float(center[0]), float(center[1])),
+            heading_point_uv=(float(heading[0]), float(heading[1])),
+            corners=corners,
+            quality=quality,
+        )]
 

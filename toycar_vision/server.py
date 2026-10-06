@@ -103,6 +103,10 @@ def run(
             min_reference_area_ratio=float(detector_config.get("min_reference_area_ratio", 0.08)),
             max_reference_area_ratio=float(detector_config.get("max_reference_area_ratio", 4.0)),
             morphology_kernel=int(detector_config.get("morphology_kernel", 9)),
+            background_file=resolve_config_path(config, detector_config.get("background_file")),
+            background_threshold=int(detector_config.get("background_threshold", 25)),
+            background_kernel=int(detector_config.get("background_kernel", 3)),
+            min_color_strength=float(detector_config.get("min_color_strength", 0.04)),
         )
     elif detector_type == "aruco":
         detector = ArucoDetector(
@@ -134,9 +138,10 @@ def run(
 
     tracking_config = config.get("tracking", {})
     tracker = MultiCarTracker(
-        position_time_constant_s=float(tracking_config.get("position_time_constant_s", 0.035)),
+        position_time_constant_s=float(tracking_config.get("position_time_constant_s", 0.010)),
         velocity_time_constant_s=float(tracking_config.get("velocity_time_constant_s", 0.080)),
         max_gap_s=float(tracking_config.get("max_gap_s", 0.25)),
+        max_speed_mm_s=float(tracking_config.get("max_speed_mm_s", 10000.0)),
     )
 
     network = config["network"]
@@ -176,14 +181,16 @@ def run(
                     detection = detection_by_id.get(marker_id)
                     if detection is None:
                         continue
-                    detected_cars.add(marker_id)
-                    telemetry_records.append(
-                        tracker.update(_measurement(detection, car, mapper), int(timestamp_us))
-                    )
+                    record = tracker.update(_measurement(detection, car, mapper), int(timestamp_us))
+                    telemetry_records.append(record)
+                    if record.detected:
+                        detected_cars.add(marker_id)
 
             if emit_missing:
                 for marker_id, car in cars.items():
-                    if marker_id not in detected_cars:
+                    if marker_id not in detected_cars and not any(
+                        record.car_id == marker_id for record in telemetry_records
+                    ):
                         telemetry_records.append(
                             tracker.missing(int(timestamp_us), marker_id, car.name)
                         )

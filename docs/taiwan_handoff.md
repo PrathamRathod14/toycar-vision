@@ -12,12 +12,12 @@ cannot be assumed to be the whole field boundary or car ID tags.
 |---|---|---|
 | Oblique camera; lens calibration and image-to-world homography | `tools/calibrate_camera.py`, `tools/capture_homography.py`, and `CameraUndistorter`/`FieldMapper` | Calibrate their exact camera, resolution, lens, and field after mounting the camera. |
 | Approximately 1.5 m by 2.5 m flat field | Field dimensions are entered in millimetres during corner setup | Measure the actual four reference points. The defaults are examples only. |
-| Track and identify a toy car | Colour mode is a prototype for **one** unmodified car with a configured ID/name. Screenshot diagnostics below show it is not yet reliable. | Calibrate and tune on the actual car and raw camera video. Test whether its front and rear are distinguishable. |
+| Track and identify a toy car | Default mode is a prototype for **one** unmodified car. It combines an empty-field reference and car colour model; screenshot diagnostics below explain why the original colour-only method was inadequate. | Calibrate and tune on the actual car and raw camera video. Test whether its front and rear are distinguishable. |
 | Multiple cars if used | Optional ArUco mode supports distinct tags on cars | Markerless colour mode does not identify multiple similar cars. Agree on car count before a multi-car demonstration. |
 | 60 frames/s, 16.67 ms/frame target | Processing time and capture-loop FPS can be measured | No 60 FPS claim until measured on their laptop and webcam. Camera exposure and actual output FPS matter. |
 | Position, heading, linear/angular velocity, image centre, relative microsecond timestamp | Implemented in `server.py`, `tracking.py`, and `protocol.py` | Check signs, heading direction, center offset, and units against physical measurements. |
 | UTF-8 UDP, default port 5000, port selectable at CLI | Implemented; destination host and port are CLI options | Set the controller laptop IP and confirm receipt through the real network. |
-| ROC curve | `tools/score_labeled_frames.py` scores held-out labelled images; `toycar-evaluate detection` plots ROC | Collect positive, empty, and hard-negative frames on the actual field. |
+| ROC curve | `tools/score_labeled_frames.py` scores held-out images against manually marked car centers; `toycar-evaluate detection` plots ROC | Collect positive, empty, and hard-negative frames on the actual field. |
 | Stationary mapping mean/max position and orientation error | `toycar-evaluate mapping` calculates mean and max (also median and p95) | Record independently measured ground truth at several field positions and headings. |
 | 2–5 page report, oral demonstration, NTNU honesty declaration | `docs/report.md` is a draft with unfilled measurement placeholders | Group must add actual data, evidence, names, and the declaration before Moodle submission. |
 
@@ -41,8 +41,8 @@ matching scene's screenshots. Before the area-filter fix, it chose a large
 background region in both scenes. After the fix, it still chose background in
 the cardboard frames and returned no detection in the tiled frames. Those
 screenshots include video-player borders and are not raw camera frames, so this
-is a failure demonstration, not a fair final accuracy measurement. It is enough
-to show that the current detector cannot be claimed to work on the NTNU setup.
+is a failure demonstration, not a fair final accuracy measurement. It motivated
+adding an empty-field reference; that new mode still needs physical testing.
 
 ## Recommended physical setup
 
@@ -53,16 +53,15 @@ to show that the current detector cannot be claimed to work on the NTNU setup.
 2. Copy `config.color.example.yaml` to a team-specific YAML file. Set the actual
    camera index or stream URL, car name/ID, output host, and UDP port. Keep the
    field size as a measured value; 2500 × 1500 mm is only an approximate brief.
-3. If lens distortion is noticeable, capture at least eight chessboard views at
-   the **tracking resolution**, run `tools/calibrate_camera.py`, and set
-   `camera.calibration_file`. Use the same correction during field calibration
-   and runtime.
+3. Capture at least eight chessboard views at the **tracking resolution** and
+   measure the board's real square size. The first-run wizard performs this
+   calibration when `camera.calibration_file` is configured. Use the same
+   correction during field calibration and runtime.
 4. Run `python start.py --config team.yaml --source 1 --host CONTROLLER_IP`.
-   Select the actual car, click its front, enter the measured separation of
-   the four reference points along the two axes, and click those points in the
-   displayed order. This makes the first point the coordinate origin. If a calibration
-   already exists and the camera moves, run with `--reset-field`; after lighting
-   or car appearance changes, use `--reset-car`.
+   The wizard captures an empty field, teaches the actual car appearance and
+   front, and asks for four floor points. Set `field.reference_points_mm` for
+   independently measured, nonrectangular point coordinates. If the camera
+   changes, use `--reset-camera` to repeat all calibration steps.
 5. Verify that the overlay follows the car across the complete field and its
    arrow points toward the front. Tune the colour threshold, minimum area,
    morphology kernel, and reference-area ratios in the YAML using recorded
@@ -78,7 +77,8 @@ to show that the current detector cannot be claimed to work on the NTNU setup.
 ## Evaluation data to collect together
 
 - **Detection:** save frames from the real camera. Create `labels.csv` with
-  `image_path,present`, where paths are relative to the CSV file. Include many
+  `image_path,present,center_u,center_v,radius_px`, where paths are relative to
+  the CSV file and positive frames have manually marked car centers. Include many
   car-present and car-absent frames from locations across the field and several
   lighting conditions. Keep calibration frames out. Run the scorer and ROC
   commands in `README.md`.

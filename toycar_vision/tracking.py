@@ -34,13 +34,15 @@ class _Track:
 class MultiCarTracker:
     def __init__(
         self,
-        position_time_constant_s: float = 0.035,
+        position_time_constant_s: float = 0.010,
         velocity_time_constant_s: float = 0.080,
         max_gap_s: float = 0.25,
+        max_speed_mm_s: float = 10000.0,
     ) -> None:
         self.position_tau = float(position_time_constant_s)
         self.velocity_tau = float(velocity_time_constant_s)
         self.max_gap_s = float(max_gap_s)
+        self.max_speed_mm_s = float(max_speed_mm_s)
         self._tracks: dict[int, _Track] = {}
 
     def update(self, measurement: Measurement, timestamp_us: int) -> Telemetry:
@@ -59,6 +61,9 @@ class MultiCarTracker:
             self._tracks[measurement.car_id] = track
         else:
             dt = now_s - track.last_time_s
+            jump_mm = math.hypot(measurement.x_mm - track.x, measurement.y_mm - track.y)
+            if self.max_speed_mm_s > 0 and jump_mm / dt > self.max_speed_mm_s:
+                return self.missing(timestamp_us, measurement.car_id, measurement.name)
             old_x, old_y, old_theta = track.x, track.y, track.theta_unwrapped
             position_alpha = _blend_factor(dt, self.position_tau)
             angle_delta = wrap_degrees(measurement.theta_deg - display_degrees(old_theta))

@@ -1,15 +1,19 @@
-# Configuration for one unmodified car and a laptop webcam.
+# First-run configuration for one unmodified car and a fixed webcam.
 camera:
   source: 0
   width: 1280
   height: 720
   fps: 60
   buffer_size: 1
-  calibration_file: null   # add calibration/camera.yaml after lens calibration
+  calibration_file: calibration/camera.yaml
 
 detector:
   type: color
   model_file: calibration/car_color.npz
+  background_file: calibration/empty_field.png
+  background_threshold: 25
+  background_kernel: 3
+  min_color_strength: 0.04
   min_quality: 0.25
   backprojection_threshold: 35
   min_area_fraction: 0.0003
@@ -30,9 +34,10 @@ cars:
     heading_offset_deg: 0.0
 
 tracking:
-  position_time_constant_s: 0.035
+  position_time_constant_s: 0.010
   velocity_time_constant_s: 0.080
   max_gap_s: 0.25
+  max_speed_mm_s: 10000.0
 
 network:
   host: 127.0.0.1
